@@ -488,7 +488,7 @@ export default function App() {
   );
 }
 
-function MovieRow({ title, movies, onSelect }: { title: string, movies: any[], onSelect: (m: any) => void }) {
+function MovieRow({ title, movies, onSelect }: { title: string, movies: any[], onSelect: (m: any) => void, key?: any }) {
   const rowRef = useRef<HTMLDivElement>(null);
   const scroll = (dir: 'left' | 'right') => {
     if (rowRef.current) {

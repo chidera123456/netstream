@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NetStream</title>
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#e50914" />
     <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg" />
   </head>
@@ -14,7 +14,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
+          navigator.serviceWorker.register('sw.js')
             .then(registration => console.log('SW registered'))
             .catch(err => console.log('SW registration failed: ', err));
         });
