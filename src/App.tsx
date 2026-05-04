@@ -193,19 +193,16 @@ export default function App() {
   // Download handler
   const handleDownload = async (media: any) => {
     setDownloadingId(media.id);
-    
-    // For a real app, this would ideally be a direct link to an MP4/M3U8 file.
-    // Proxying embed links may fail as they are often interactive pages, not raw streams.
     const downloadUrl = getPlayerUrl(media);
-    
+
+    // Full-Stack Proxy Solution: Using our dedicated Express backend to avoid CORS and force downloads
     try {
       const proxyUrl = `/api/download?url=${encodeURIComponent(downloadUrl)}`;
       
       const response = await fetch(proxyUrl);
       if (!response.ok) throw new Error("Network response was not ok");
 
-      // We read the body as a stream and build a blob to keep user on the page
-      // This is exactly as requested in the user prompt example.
+      // Handle stream as blob to keep user on the page (prevents white screen/redirects)
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       
