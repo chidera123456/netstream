@@ -18,8 +18,7 @@ import {
   PlayCircle,
   RotateCcw,
   Home,
-  User,
-  Download
+  User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -46,7 +45,6 @@ export default function App() {
   const [isSearching, setIsSearching] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
-  const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
   // Scroll modal to top when media selection changes
@@ -188,46 +186,6 @@ export default function App() {
     const type = media.first_air_date ? 'tv' : 'movie';
     if (type === 'tv') return `https://www.vidking.net/embed/tv/${media.id}/1/1?color=e50914&autoPlay=true`;
     return `https://www.vidking.net/embed/movie/${media.id}?color=e50914&autoPlay=true`;
-  };
-
-  // Download handler
-  const handleDownload = async (media: any) => {
-    setDownloadingId(media.id);
-    const downloadUrl = getPlayerUrl(media);
-
-    // Full-Stack Proxy Solution: Using our dedicated Express backend to avoid CORS and force downloads
-    try {
-      const proxyUrl = `/api/download?url=${encodeURIComponent(downloadUrl)}`;
-      
-      const response = await fetch(proxyUrl);
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
-      }
-
-      // Handle stream as blob to keep user on the page (prevents white screen/redirects)
-      const blob = await response.blob();
-      
-      // Safety check: if blob is too small, it's likely an error message or a tiny empty file
-      if (blob.size < 1000) {
-        throw new Error("Downloaded file is too small to be a video. The provider might be blocking the proxy.");
-      }
-
-      const url = window.URL.createObjectURL(blob);
-      
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${media.title || media.name}.mp4`; 
-      document.body.appendChild(a);
-      a.click();
-      
-      window.URL.revokeObjectURL(url);
-      a.remove();
-    } catch (err: any) {
-      alert("Download failed, but the site is still working! Note: Proxy works best with direct .mp4 links.");
-      console.error("Download Error:", err);
-    } finally {
-      setDownloadingId(null);
-    }
   };
 
   return (
@@ -451,18 +409,6 @@ export default function App() {
                         <div className="flex items-center gap-2 md:gap-3">
                           <button onClick={() => setShowPlayer(true)} className="flex items-center gap-2 bg-white text-black px-4 md:px-8 py-2 md:py-2.5 rounded-md font-bold hover:bg-gray-200 transition text-sm md:text-base">
                             <Play className="w-4 h-4 md:w-5 md:h-5 fill-black" /> Play Now
-                          </button>
-                          <button 
-                            disabled={downloadingId !== null}
-                            onClick={() => handleDownload(selectedMedia)} 
-                            className="flex items-center gap-2 bg-gray-500/50 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-md font-bold hover:bg-gray-500/70 transition text-sm md:text-base disabled:opacity-50"
-                          >
-                            {downloadingId === (selectedMedia as any).id ? (
-                                <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
-                            ) : (
-                                <Download className="w-4 h-4 md:w-5 md:h-5" />
-                            )}
-                            {downloadingId === (selectedMedia as any).id ? "Downloading..." : "Download"}
                           </button>
                           <button className="p-2 border-2 border-gray-500 rounded-full hover:border-white transition"><Plus className="w-4 h-4 md:w-5 md:h-5" /></button>
                           <button className="p-2 border-2 border-gray-500 rounded-full hover:border-white transition"><ThumbsUp className="w-4 h-4 md:w-5 md:h-5" /></button>
