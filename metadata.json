@@ -1,0 +1,6 @@
+{
+  "name": "NetStream",
+  "description": "A feature-rich movie streaming platform powered by TMDB API, featuring category browsing, search, and video previews.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
