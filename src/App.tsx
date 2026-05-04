@@ -18,7 +18,8 @@ import {
   PlayCircle,
   RotateCcw,
   Home,
-  User
+  User,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -45,6 +46,7 @@ export default function App() {
   const [isSearching, setIsSearching] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
   // Scroll modal to top when media selection changes
@@ -186,6 +188,56 @@ export default function App() {
     const type = media.first_air_date ? 'tv' : 'movie';
     if (type === 'tv') return `https://www.vidking.net/embed/tv/${media.id}/1/1?color=e50914&autoPlay=true`;
     return `https://www.vidking.net/embed/movie/${media.id}?color=e50914&autoPlay=true`;
+  };
+
+  // Download handler
+  const handleDownload = async (media: any) => {
+    setDownloadingId(media.id);
+    // Note: This URL needs to be a direct video source for the proxy to work efficiently.
+    // For now we use the same embed URL which may NOT work directly if it's an iframe-only link.
+    const downloadUrl = getPlayerUrl(media);
+    
+    try {
+      const proxyUrl = `/api/download?url=${encodeURIComponent(downloadUrl)}`;
+      
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error('Download failed');
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No reader available');
+
+      const stream = new ReadableStream({
+        start(controller) {
+          function push() {
+            reader.read().then(({ done, value }) => {
+              if (done) {
+                controller.close();
+                return;
+              }
+              controller.enqueue(value);
+              push();
+            });
+          }
+          push();
+        }
+      });
+
+      const newResponse = new Response(stream);
+      const blob = await newResponse.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${media.title || media.name}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed", err);
+      alert("Proxy download failed. This specific source might require direct video link exploration.");
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   return (
@@ -370,10 +422,10 @@ export default function App() {
 
       {/* --- ENHANCED DETAILS MODAL --- */}
       {selectedMedia && (
-        <div ref={modalRef} className="fixed inset-0 z-[100] flex justify-center overflow-y-auto bg-black/90 backdrop-blur-sm scrollbar-hide py-4 md:py-10 px-0 md:px-4">
+        <div ref={modalRef} className="fixed inset-0 z-[100] flex justify-center overflow-y-auto bg-black/95 backdrop-blur-sm scrollbar-hide md:py-6 px-0 md:px-6">
           <div className="absolute inset-0" onClick={() => setSelectedMedia(null)}></div>
           
-          <div className="relative w-full max-w-4xl bg-[#181818] md:rounded-xl overflow-hidden shadow-2xl h-fit mb-10 animate-in zoom-in-95 duration-300">
+          <div className="relative w-full max-w-[1200px] lg:max-w-[1400px] bg-[#181818] md:rounded-xl overflow-hidden shadow-2xl h-fit mb-10 animate-in zoom-in-95 duration-300">
             <button onClick={() => setSelectedMedia(null)} className="absolute top-4 right-4 z-[120] p-2 bg-black/60 hover:bg-black/90 rounded-full text-white transition"><X className="w-5 h-5 md:w-6 md:h-6" /></button>
 
             {/* Modal Header / Visual */}
@@ -409,6 +461,18 @@ export default function App() {
                         <div className="flex items-center gap-2 md:gap-3">
                           <button onClick={() => setShowPlayer(true)} className="flex items-center gap-2 bg-white text-black px-4 md:px-8 py-2 md:py-2.5 rounded-md font-bold hover:bg-gray-200 transition text-sm md:text-base">
                             <Play className="w-4 h-4 md:w-5 md:h-5 fill-black" /> Play Now
+                          </button>
+                          <button 
+                            disabled={downloadingId !== null}
+                            onClick={() => handleDownload(selectedMedia)} 
+                            className="flex items-center gap-2 bg-gray-500/50 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-md font-bold hover:bg-gray-500/70 transition text-sm md:text-base disabled:opacity-50"
+                          >
+                            {downloadingId === (selectedMedia as any).id ? (
+                                <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
+                            ) : (
+                                <Download className="w-4 h-4 md:w-5 md:h-5" />
+                            )}
+                            {downloadingId === (selectedMedia as any).id ? "Downloading..." : "Download"}
                           </button>
                           <button className="p-2 border-2 border-gray-500 rounded-full hover:border-white transition"><Plus className="w-4 h-4 md:w-5 md:h-5" /></button>
                           <button className="p-2 border-2 border-gray-500 rounded-full hover:border-white transition"><ThumbsUp className="w-4 h-4 md:w-5 md:h-5" /></button>
@@ -454,7 +518,7 @@ export default function App() {
               {similarContent.length > 0 && (
                 <div className="mt-8 md:mt-12 space-y-4">
                     <h3 className="text-lg md:text-xl font-bold">More Like This</h3>
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
                     {similarContent.map((movie: any) => (
                         <div key={movie.id} onClick={() => { setSelectedMedia(movie); }} className="bg-[#2f2f2f] rounded-md overflow-hidden cursor-pointer hover:bg-[#3f3f3f] transition group active:scale-95">
                         <div className="relative aspect-video">
@@ -502,9 +566,9 @@ function MovieRow({ title, movies, onSelect }: { title: string, movies: any[], o
       <h2 className="text-lg md:text-xl font-bold hover:text-gray-300 transition cursor-pointer inline-flex items-center gap-2 group/title">{title} <ChevronRight className="w-4 h-4 opacity-0 group-hover/title:opacity-100 transition-opacity" /></h2>
       <div className="relative group/row">
         <button onClick={() => scroll('left')} className="absolute left-0 top-0 bottom-0 z-40 bg-black/50 w-12 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity hover:bg-black/70"><ChevronLeft className="w-8 h-8" /></button>
-        <div ref={rowRef} className="flex gap-2 overflow-x-auto no-scrollbar py-4 scroll-smooth">
+        <div ref={rowRef} className="flex gap-2 overflow-x-auto no-scrollbar py-4 scroll-smooth snap-x snap-mandatory overscroll-x-contain scroll-pl-4 md:scroll-pl-12">
           {movies.map((movie, idx) => (
-            <div key={idx} onClick={() => onSelect(movie)} className="relative min-w-[160px] md:min-w-[240px] h-[90px] md:h-[135px] cursor-pointer transition-transform duration-300 hover:scale-110 hover:z-30 group/item">
+            <div key={idx} onClick={() => onSelect(movie)} className="relative min-w-[160px] md:min-w-[240px] h-[90px] md:h-[135px] cursor-pointer transition-transform duration-300 hover:scale-110 hover:z-30 group/item snap-start">
               <img src={`${IMAGE_BASE_URL}${movie.backdrop_path || movie.poster_path}`} className="w-full h-full object-cover rounded-sm shadow-md" alt={movie.title || movie.name} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/item:opacity-100 transition-opacity flex flex-col justify-end p-3">
                 <h4 className="text-[10px] md:text-xs font-bold truncate">{movie.title || movie.name}</h4>
