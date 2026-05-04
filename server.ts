@@ -48,6 +48,7 @@ async function startServer() {
       }
       
       // Force download headers
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', response.headers['content-type'] || 'video/mp4');
 

@@ -200,10 +200,18 @@ export default function App() {
       const proxyUrl = `/api/download?url=${encodeURIComponent(downloadUrl)}`;
       
       const response = await fetch(proxyUrl);
-      if (!response.ok) throw new Error("Network response was not ok");
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+      }
 
       // Handle stream as blob to keep user on the page (prevents white screen/redirects)
       const blob = await response.blob();
+      
+      // Safety check: if blob is too small, it's likely an error message or a tiny empty file
+      if (blob.size < 1000) {
+        throw new Error("Downloaded file is too small to be a video. The provider might be blocking the proxy.");
+      }
+
       const url = window.URL.createObjectURL(blob);
       
       const a = document.createElement('a');
